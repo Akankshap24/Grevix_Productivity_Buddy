@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}Rescue my day — Productivity Buddy{% endblock %}
+{% block body_class %}rescue-page{% endblock %}
+{% block content %}
+<main class="rescue-results">
+  <div class="rescue-topline">
+    <a class="back-link" href="{{ url_for('index') }}">← Back to your workspace</a>
+    {% include '_theme_toggle.html' %}
+  </div>
+  <div class="results-icon">✳</div>
+  <div class="eyebrow"><span class="eyebrow-line"></span> YOUR RESET PLAN</div>
+  <h1>Let's make the time <span>count.</span></h1>
+  <p class="results-intro">You have {{ available }} minutes. Here's a realistic starting point, based on deadlines and priority.</p>
+
+  {% if plan.empty %}
+  <section class="results-panel">
+    <h2>You're all caught up.</h2>
+    <p>There are no unfinished tasks in your list. Take a breath or add something new when you're ready.</p>
+    <a class="primary-button inline-button" href="{{ url_for('index') }}">Back to overview ↗</a>
+  </section>
+  {% else %}
+  <section class="plan-summary">
+    <div><span class="summary-label">PLANNED FOCUS</span><strong>{{ plan.total_planned }}<small> min</small></strong></div>
+    <div><span class="summary-label">TIME LEFT OVER</span><strong>{{ plan.remaining }}<small> min</small></strong></div>
+    <div><span class="summary-label">TASKS TO FOCUS ON</span><strong>{{ plan.chosen|length }}<small> tasks</small></strong></div>
+  </section>
+  <div class="plan-meter" aria-label="{{ plan.total_planned }} of {{ available }} minutes planned"><span style="width: {{ (plan.total_planned / available * 100)|round(1) }}%"></span></div>
+
+  <section class="results-panel">
+    <div class="results-panel-head"><div><div class="section-eyebrow">START HERE</div><h2>Your focus list</h2></div><span class="plan-label">Fits your time</span></div>
+    {% if plan.chosen %}
+      {% for task in plan.chosen %}
+      <div class="plan-task">
+        <span class="plan-check">{{ loop.index }}</span>
+        <div class="plan-task-copy"><strong>{{ task.title }}</strong><span>{{ task.category }} · {{ task.priority }} priority{% if task.due_date %} · due {{ task.due_date }}{% endif %}</span></div>
+        <span class="plan-minutes">{{ task.estimate }} min</span>
+        <a class="plan-focus" href="{{ url_for('index', focus=task.id, _anchor='focus') }}" aria-label="Start focusing on {{ task.title }}">Focus ◷</a>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p>No task fits into this time block. Try adding a shorter task or increasing your available time.</p>
+    {% endif %}
+  </section>
+
+  {% if plan.deferred %}
+  <section class="deferred-panel">
+    <div class="deferred-icon">↗</div>
+    <div class="deferred-body">
+      <h3>Can wait for another block</h3>
+      <p>These tasks don't fit into the time you have. Deferring them is a decision, not a failure.</p>
+      {% for task in plan.deferred %}<div class="deferred-task"><span>{{ task.title }}</span><small>{{ task.estimate }} min</small></div>{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+  <p class="method-note">How this plan works: overdue items and higher-priority tasks are considered first, then deadlines and estimated duration. It's a transparent planning aid, not an AI prediction.</p>
+  <div class="results-actions">
+    {% if plan.chosen %}<a class="primary-button inline-button" href="{{ url_for('index', focus=plan.chosen[0].id, _anchor='focus') }}">Start with task 1 <span>◷</span></a>{% endif %}
+    <a class="secondary-button" href="{{ url_for('index') }}">Back to my workspace</a>
+  </div>
+  {% endif %}
+  <footer class="page-footer"><span>One step at a time.</span><span class="footer-brand">PRODUCTIVITY BUDDY <b>✳</b></span></footer>
+</main>
+{% endblock %}
