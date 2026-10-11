@@ -3,7 +3,11 @@
  * When it isn't, the last good copy of the dashboard opens instead, so tasks
  * can still be added to the offline queue and synced later.
  */
+<<<<<<< HEAD
 const CACHE = 'pb-shell-v1';
+=======
+const CACHE = 'pb-shell-v2';
+>>>>>>> 7def60a (minor changes)
 const SHELL = ['/', '/static/style.css', '/static/app.js'];
 
 self.addEventListener('install', event => {
