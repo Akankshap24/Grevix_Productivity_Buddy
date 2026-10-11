@@ -11,6 +11,12 @@
   <div class="eyebrow"><span class="eyebrow-line"></span> YOUR RESET PLAN</div>
   <h1>Let's make the time <span>count.</span></h1>
   <p class="results-intro">You have {{ available }} minutes. Here's a realistic starting point, based on deadlines and priority.</p>
+  {% if not plan.dates_trusted %}
+  <div class="deadline-warning" role="alert">
+    <strong>⚠ Deadline timing may be unreliable</strong>
+    <p>Your system clock may have changed, so this plan is ordered by priority and deadline only. Overdue tasks aren't moved to the front until the warning is cleared.</p>
+  </div>
+  {% endif %}
 
   {% if plan.empty %}
   <section class="results-panel">
@@ -32,7 +38,7 @@
       {% for task in plan.chosen %}
       <div class="plan-task">
         <span class="plan-check">{{ loop.index }}</span>
-        <div class="plan-task-copy"><strong>{{ task.title }}</strong><span>{{ task.category }} · {{ task.priority }} priority{% if task.due_date %} · due {{ task.due_date }}{% endif %}</span></div>
+        <div class="plan-task-copy"><strong>{{ task.title }}</strong><span>{{ task.category }} · {{ task.priority }} priority{% if task.due_date %} · {% if task.overdue %}overdue since{% else %}due{% endif %} {{ task.due_date }}{% endif %}</span></div>
         <span class="plan-minutes">{{ task.estimate }} min</span>
         <a class="plan-focus" href="{{ url_for('index', focus=task.id, _anchor='focus') }}" aria-label="Start focusing on {{ task.title }}">Focus ◷</a>
       </div>

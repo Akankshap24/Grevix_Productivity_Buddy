@@ -4,9 +4,18 @@
 <div class="app-shell">
   <aside class="sidebar" id="sidebar">
     <a class="brand" href="{{ url_for('index') }}" aria-label="Productivity Buddy home">
-      <span class="brand-mark"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4.5 24.1 15.9 35.5 20l-11.4 4.1L20 35.5l-4.1-11.4L4.5 20l11.4-4.1z" fill="currentColor"/><circle cx="20" cy="20" r="4.2" class="brand-core"/></svg></span>
-      <span class="brand-copy"><strong>productivity<span>buddy</span></strong><small>YOUR CALMER WORKSPACE</small></span>
+      <span class="brand-mark">
+        <svg viewBox="0 0 40 40" aria-hidden="true">
+          <path d="M20 4.5 24.1 15.9 35.5 20l-11.4 4.1L20 35.5l-4.1-11.4L4.5 20l11.4-4.1z" fill="currentColor"/>
+          <circle cx="20" cy="20" r="4.2" class="brand-core"/>
+        </svg>
+      </span>
+      <span class="brand-copy">
+        <strong>productivity<span>buddy</span></strong>
+        <small>YOUR CALMER WORKSPACE</small>
+      </span>
     </a>
+
     <div class="workspace-label">WORKSPACE</div>
     <nav class="nav-list" aria-label="Main navigation">
       <a class="nav-item active" href="#overview" data-section="overview"><span class="nav-icon">◫</span><span class="nav-text">Overview</span></a>
@@ -14,16 +23,26 @@
       <a class="nav-item" href="#focus" data-section="focus"><span class="nav-icon">◷</span><span class="nav-text">Focus timer</span><span class="nav-live" id="navTimer" hidden></span></a>
       <a class="nav-item" href="#rescue" data-section="rescue"><span class="nav-icon">✳</span><span class="nav-text">Rescue my day</span></a>
     </nav>
+
     <div class="sidebar-divider"></div>
     <div class="workspace-label">YOUR SPACES</div>
     <a class="space-item" href="#tasks" data-space="study"><span class="space-dot lilac"></span> Study <span class="space-number">{{ category_counts.Study }}</span></a>
     <a class="space-item" href="#tasks" data-space="work"><span class="space-dot blue"></span> Work <span class="space-number">{{ category_counts.Work }}</span></a>
     <a class="space-item" href="#tasks" data-space="personal"><span class="space-dot peach"></span> Personal <span class="space-number">{{ category_counts.Personal }}</span></a>
     <a class="space-item" href="#tasks" data-space="health"><span class="space-dot green"></span> Health <span class="space-number">{{ category_counts.Health }}</span></a>
+
     <div class="sidebar-spacer"></div>
-    <div class="sidebar-note"><span class="note-sparkle">✳</span><p><strong>A gentle reminder</strong><br>Progress is still progress, even when it's small.</p><span class="note-doodle">✦</span></div>
-    <div class="profile-row"><div class="avatar">PB</div><div class="profile-copy"><strong>Your workspace</strong><small>One step at a time</small></div></div>
+    <div class="sidebar-note">
+      <span class="note-sparkle">✳</span>
+      <p><strong>A gentle reminder</strong><br>Progress is still progress, even when it's small.</p>
+      <span class="note-doodle">✦</span>
+    </div>
+    <div class="profile-row">
+      <div class="avatar">PB</div>
+      <div class="profile-copy"><strong>Your workspace</strong><small>One step at a time</small></div>
+    </div>
   </aside>
+
   <div class="sidebar-scrim" id="sidebarScrim" hidden></div>
 
   <main class="main-content" id="overview">
@@ -57,53 +76,150 @@
             <a class="hero-link" href="#focus" data-start-focus>Start a 25-min focus <span>◷</span></a>
           </div>
         </div>
-        <div class="hero-art" aria-hidden="true"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-sun"></div><div class="art-leaf leaf-one"></div><div class="art-leaf leaf-two"></div><div class="art-star star-one">✳</div><div class="art-star star-two">✦</div><div class="art-card"><span class="art-card-check">✓</span><span><b>One thing at a time</b><small>You're doing just fine.</small></span></div></div>
+        <div class="hero-art" aria-hidden="true">
+          <div class="art-orbit orbit-one"></div>
+          <div class="art-orbit orbit-two"></div>
+          <div class="art-sun"></div>
+          <div class="art-leaf leaf-one"></div>
+          <div class="art-leaf leaf-two"></div>
+          <div class="art-star star-one">✳</div>
+          <div class="art-star star-two">✦</div>
+          <div class="art-card"><span class="art-card-check">✓</span><span><b>One thing at a time</b><small>You're doing just fine.</small></span></div>
+        </div>
         <div class="hero-grain"></div>
       </section>
 
       <section class="stats-grid" aria-label="Your task statistics">
-        <article class="stat-card"><div class="stat-top"><span class="stat-label">Tasks in your orbit</span><span class="stat-icon lavender">☷</span></div><div class="stat-value">{{ total }}<small> total</small></div><div class="stat-foot"><span class="tiny-dot lavender-dot"></span> Everything you've captured</div></article>
-        <article class="stat-card"><div class="stat-top"><span class="stat-label">Already done</span><span class="stat-icon mint">✓</span></div><div class="stat-value">{{ completed }}<small> completed</small></div><div class="stat-foot"><span class="tiny-dot mint-dot"></span> Every finish counts</div></article>
-        <article class="stat-card"><div class="stat-top"><span class="stat-label">Still on your list</span><span class="stat-icon peach-bg">◷</span></div><div class="stat-value">{{ pending_count }}<small> to go</small></div><div class="stat-foot">{% if overdue %}<span class="tiny-dot red-dot"></span> <span class="overdue-text">{{ overdue }} overdue</span> · {% else %}<span class="tiny-dot peach-dot"></span> {% endif %}{{ (minutes_left // 60) }}h {{ minutes_left % 60 }}m of effort</div></article>
-        <article class="stat-card progress-stat"><div class="stat-top"><span class="stat-label">Your momentum</span><span class="stat-icon blue-bg">↗</span></div><div class="progress-row"><div class="stat-value">{{ completion_rate }}<small>%</small></div><div class="progress-ring" style="--progress: {{ completion_rate }}%"><span>{{ completion_rate }}%</span></div></div><div class="progress-track"><span style="width: {{ completion_rate }}%"></span></div><div class="stat-foot">A snapshot, not a scorecard.</div></article>
+        <article class="stat-card">
+          <div class="stat-top"><span class="stat-label">Tasks in your orbit</span><span class="stat-icon lavender">☷</span></div>
+          <div class="stat-value">{{ total }}<small> total</small></div>
+          <div class="stat-foot"><span class="tiny-dot lavender-dot"></span> Everything you've captured</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-top"><span class="stat-label">Already done</span><span class="stat-icon mint">✓</span></div>
+          <div class="stat-value">{{ completed }}<small> completed</small></div>
+          <div class="stat-foot"><span class="tiny-dot mint-dot"></span> Every finish counts</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-top"><span class="stat-label">Still on your list</span><span class="stat-icon peach-bg">◷</span></div>
+          <div class="stat-value">{{ pending_count }}<small> to go</small></div>
+          <div class="stat-foot">
+            {% if overdue %}
+              <span class="tiny-dot red-dot"></span>
+              <span class="overdue-text">{{ overdue }} overdue</span> ·
+            {% else %}
+              <span class="tiny-dot peach-dot"></span>
+            {% endif %}
+            {{ minutes_left // 60 }}h {{ minutes_left % 60 }}m of effort
+          </div>
+        </article>
+        <article class="stat-card progress-stat">
+          <div class="stat-top"><span class="stat-label">Your momentum</span><span class="stat-icon blue-bg">↗</span></div>
+          <div class="progress-row">
+            <div class="stat-value">{{ completion_rate }}<small>%</small></div>
+            <div class="progress-ring" style="--progress: {{ completion_rate }}%"><span>{{ completion_rate }}%</span></div>
+          </div>
+          <div class="progress-track"><span style="width: {{ completion_rate }}%"></span></div>
+          <div class="stat-foot">A snapshot, not a scorecard.</div>
+        </article>
       </section>
 
       <section class="content-grid">
         <div class="tasks-panel panel" id="tasks">
-          <div class="panel-heading"><div><div class="section-eyebrow">YOUR NEXT STEPS</div><h3>Today's task list <span class="heading-count">{{ pending_count }}</span></h3></div><button class="text-button" id="openTaskModal2">＋ New task</button></div>
+          <div class="panel-heading">
+            <div>
+              <div class="section-eyebrow">YOUR NEXT STEPS</div>
+              <h3>Today's task list <span class="heading-count">{{ pending_count }}</span></h3>
+            </div>
+            <button class="text-button" id="openTaskModal2">＋ New task</button>
+          </div>
+
+          {% if clock_unreliable %}
+          <div class="deadline-warning" role="alert">
+            <strong>⚠ Deadline timing may be unreliable</strong>
+            <p>Your system clock may have changed unexpectedly, so overdue labels are paused. Once you've checked your computer's time, choose <a href="#deadlineGuard">Clear warning</a> in Deadline Guard.</p>
+          </div>
+          {% endif %}
+
           <div class="task-toolbar">
             <div class="filter-tabs" role="group" aria-label="Filter tasks">
               <button class="filter-tab selected" data-filter="all" aria-pressed="true">All tasks</button>
               <button class="filter-tab" data-filter="pending" aria-pressed="false">To do</button>
               <button class="filter-tab" data-filter="completed" aria-pressed="false">Completed</button>
             </div>
-            <label class="search-box"><span aria-hidden="true">⌕</span><input type="search" id="taskSearch" placeholder="Find a task…  /" aria-label="Search tasks"></label>
+            <label class="search-box"><span aria-hidden="true">⌕</span><input type="search" id="taskSearch" placeholder="Find a task… /" aria-label="Search tasks"></label>
           </div>
+
           <div class="task-list" id="taskList">
+            <!-- AFTERCODE: Offline pending tasks -->
+            <section id="offlinePendingTasks" class="offline-pending-tasks" aria-live="polite" hidden>
+              <div class="offline-pending-heading">
+                <span aria-hidden="true">↻</span>
+                <strong>Waiting to sync</strong>
+                <span id="offlinePendingCount">0</span>
+              </div>
+              <p>These tasks are saved on this device and will sync when the server is reachable.</p>
+              <div id="offlinePendingList"></div>
+            </section>
+            <!-- End offline pending tasks -->
+
             {% for task in tasks %}
             <article class="task-row {% if task.completed %}is-complete{% endif %}" data-task-id="{{ task.id }}" data-status="{% if task.completed %}completed{% else %}pending{% endif %}" data-search="{{ (task.title ~ ' ' ~ task.category ~ ' ' ~ task.priority ~ ' ' ~ (task.notes or ''))|lower }}">
-              <form method="post" action="{{ url_for('toggle_task', task_id=task.id) }}" class="check-form"><button class="task-check {% if task.completed %}checked{% endif %}" type="submit" aria-label="{% if task.completed %}Mark incomplete{% else %}Mark complete{% endif %}: {{ task.title }}">{% if task.completed %}✓{% endif %}</button></form>
+              <form method="post" action="{{ url_for('toggle_task', task_id=task.id) }}" class="check-form">
+                <button class="task-check {% if task.completed %}checked{% endif %}" type="submit" aria-label="{% if task.completed %}Mark incomplete{% else %}Mark complete{% endif %}: {{ task.title }}">{% if task.completed %}✓{% endif %}</button>
+              </form>
               <div class="task-main">
                 <div class="task-title">{{ task.title }}</div>
                 <div class="task-meta">
                   <span class="category-pill {{ task.category|lower }}"><span class="category-dot"></span>{{ task.category }}</span>
-                  {% if task.due_date %}<span class="task-due {% if task.due_date < today and not task.completed %}overdue{% endif %}">▦ {% if task.due_date == today %}Due today{% elif task.due_date < today and not task.completed %}Overdue · {{ task.due_date }}{% else %}{{ task.due_date }}{% endif %}</span>{% endif %}
+                  {% if task.due_date %}
+                  <span class="task-due {% if task.due_date < today and not task.completed and not clock_unreliable %}overdue{% endif %}">
+                    ▦
+                    {% if clock_unreliable %}
+                      {{ task.due_date }} · Verify time
+                    {% elif task.due_date == today %}
+                      Due today
+                    {% elif task.due_date < today and not task.completed %}
+                      Overdue · {{ task.due_date }}
+                    {% else %}
+                      {{ task.due_date }}
+                    {% endif %}
+                  </span>
+                  {% endif %}
                   <span class="task-duration">◷ {{ task.estimate }} min</span>
                 </div>
                 {% if task.notes %}<p class="task-note">{{ task.notes }}</p>{% endif %}
               </div>
               <span class="priority-pill {{ task.priority|lower }}"><span></span>{{ task.priority }}</span>
               <div class="row-actions">
-                {% if not task.completed %}<button class="row-button focus-row-button" type="button" data-focus-task="{{ task.id }}" aria-label="Focus on {{ task.title }}" title="Focus on this">◷</button>{% endif %}
-                <form method="post" action="{{ url_for('remove_task', task_id=task.id) }}" class="delete-form" data-confirm="Remove “{{ task.title }}”?"><button class="row-button delete-button" type="submit" aria-label="Delete {{ task.title }}" title="Delete">×</button></form>
+                {% if not task.completed %}
+                <button class="row-button focus-row-button" type="button" data-focus-task="{{ task.id }}" aria-label="Focus on {{ task.title }}" title="Focus on this">◷</button>
+                {% endif %}
+                <form method="post" action="{{ url_for('remove_task', task_id=task.id) }}" class="delete-form" data-confirm="Remove “{{ task.title }}”?">
+                  <button class="row-button delete-button" type="submit" aria-label="Delete {{ task.title }}" title="Delete">×</button>
+                </form>
               </div>
             </article>
             {% else %}
-            <div class="empty-state"><div class="empty-illustration">✳</div><h4>A little room to begin</h4><p>Add a task and make your first small move.</p><button class="text-button" id="emptyAddTask">＋ Add your first task</button></div>
+            <div class="empty-state">
+              <div class="empty-illustration">✳</div>
+              <h4>A little room to begin</h4>
+              <p>Add a task and make your first small move.</p>
+              <button class="text-button" id="emptyAddTask">＋ Add your first task</button>
+            </div>
             {% endfor %}
-            <div class="no-results" id="noResults" hidden><strong>No tasks found</strong><p>Try another search or filter.</p><button class="text-button" type="button" id="clearFilters">Clear search & filters</button></div>
+
+            <div class="no-results" id="noResults" hidden>
+              <strong>No tasks found</strong>
+              <p>Try another search or filter.</p>
+              <button class="text-button" type="button" id="clearFilters">Clear search & filters</button>
+            </div>
           </div>
-          <div class="task-list-footer"><span><span class="footer-check">✓</span> One step at a time.</span><span>{{ completed }} of {{ total }} complete</span></div>
+
+          <div class="task-list-footer">
+            <span><span class="footer-check">✓</span> One step at a time.</span>
+            <span>{{ completed }} of {{ total }} complete</span>
+          </div>
         </div>
 
         <aside class="right-column">
@@ -111,7 +227,11 @@
             <div class="panel-heading">
               <div><div class="section-eyebrow">ONE THING AT A TIME</div><h3>Focus timer</h3></div>
               <button class="icon-button" type="button" id="timerSound" aria-pressed="true" aria-label="Chime when a session ends" title="Chime when a session ends">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path class="sound-body" d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path class="sound-waves" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path class="sound-off" d="m16 9.5 5 5m0-5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path class="sound-body" d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                  <path class="sound-waves" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                  <path class="sound-off" d="m16 9.5 5 5m0-5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
               </button>
             </div>
             <div class="mode-tabs" role="group" aria-label="Timer mode">
@@ -137,7 +257,9 @@
             <label class="form-label" for="focusTask">Working on</label>
             <select class="form-control" id="focusTask">
               <option value="">Just focusing — no specific task</option>
-              {% for task in pending %}<option value="{{ task.id }}">{{ task.title }} · {{ task.estimate }} min</option>{% endfor %}
+              {% for task in pending %}
+              <option value="{{ task.id }}">{{ task.title }} · {{ task.estimate }} min</option>
+              {% endfor %}
             </select>
             <div class="timer-controls">
               <button class="round-button" type="button" id="timerReset" aria-label="Reset timer" title="Reset">
@@ -158,6 +280,45 @@
             </div>
           </section>
 
+          <!-- AFTERCODE: Deadline Guard -->
+          <section class="deadline-guard-card panel" id="deadlineGuard" data-clock-unreliable="{{ 'true' if clock_unreliable else 'false' }}">
+            <div class="panel-heading">
+              <div>
+                <div class="section-eyebrow">AFTERCODE // THE SHIFT</div>
+                <h3>Deadline Guard</h3>
+              </div>
+              <span id="guardBadge" class="guard-badge">Checking…</span>
+            </div>
+            <p class="guard-description">Protecting your deadlines when your clock or connection becomes unreliable.</p>
+            <div class="guard-status-row">
+              <span class="guard-status-icon">◷</span>
+              <div>
+                <strong>System clock</strong>
+                <p id="guardClockMessage" aria-live="polite">Checking clock stability…</p>
+              </div>
+            </div>
+            <div class="guard-status-row">
+              <span class="guard-status-icon">↔</span>
+              <div>
+                <strong>Network connection</strong>
+                <p id="guardNetworkMessage" aria-live="polite">Checking connection…</p>
+              </div>
+            </div>
+            <div class="guard-simulation">
+              <label class="form-label" for="guardJumpSeconds">Simulate clock drift</label>
+              <select class="form-control" id="guardJumpSeconds">
+                <option value="3600">Jump forward by 1 hour</option>
+                <option value="-1800">Jump backward by 30 minutes</option>
+                <option value="3">Jump forward by 3 seconds (within tolerance)</option>
+              </select>
+              <div class="guard-actions">
+                <button class="rescue-button" type="button" id="simulateClockJump">Run simulation ↗</button>
+                <button class="secondary-button guard-reset" type="button" id="resetClockGuard" hidden>Clear warning</button>
+              </div>
+              <p class="guard-result" id="guardSimulationResult" aria-live="polite">Simulations never change your computer's actual clock.</p>
+            </div>
+          </section>
+
           <section class="rescue-card panel" id="rescue">
             <div class="rescue-icon">✳</div>
             <div class="section-eyebrow">WHEN PLANS CHANGE</div>
@@ -166,19 +327,34 @@
             <form method="post" action="{{ url_for('rescue') }}" id="rescueForm" novalidate>
               <label for="availableMinutes">Time you have left</label>
               <div class="time-input-wrap"><input id="availableMinutes" name="available_minutes" type="number" min="15" max="720" step="5" value="120" required inputmode="numeric"><span>minutes</span></div>
-              <div class="quick-times" role="group" aria-label="Quick time picks"><button type="button" data-minutes="30">30m</button><button type="button" data-minutes="60">1h</button><button type="button" data-minutes="120">2h</button><button type="button" data-minutes="240">4h</button></div>
-              <p class="field-error" id="rescueError" hidden>Enter a time between 15 and 720 minutes.</p>
+              <div class="quick-times" role="group" aria-label="Quick time picks">
+                <button type="button" data-minutes="30">30m</button>
+                <button type="button" data-minutes="60">1h</button>
+                <button type="button" data-minutes="120">2h</button>
+                <button type="button" data-minutes="240">4h</button>
+              </div>
+              <p class="field-error" id="rescueError" hidden>Enter a whole number of minutes between 15 and 720.</p>
               <button type="submit" class="rescue-button">Rescue my day <span>↗</span></button>
             </form>
             <div class="rescue-foot"><span class="pulse-dot"></span> No guilt. Just a new plan.</div>
           </section>
 
           <section class="momentum-card panel">
-            <div class="momentum-heading"><div><div class="section-eyebrow">A QUICK CHECK-IN</div><h3>Your momentum</h3></div><span class="momentum-spark">✧</span></div>
-            <div class="momentum-body"><div class="momentum-number">{{ completion_rate }}<span>%</span></div><div class="momentum-copy"><strong>{% if completion_rate == 100 and total > 0 %}Look at you go!{% elif completion_rate >= 60 %}You're finding your flow.{% elif completion_rate > 0 %}Small wins add up.{% else %}Start anywhere.{% endif %}</strong><p>{% if total == 0 %}Add one task to get started.{% else %}{{ completed }} of {{ total }} tasks checked off. Keep it kind and realistic.{% endif %}</p></div></div>
+            <div class="momentum-heading">
+              <div><div class="section-eyebrow">A QUICK CHECK-IN</div><h3>Your momentum</h3></div>
+              <span class="momentum-spark">✧</span>
+            </div>
+            <div class="momentum-body">
+              <div class="momentum-number">{{ completion_rate }}<span>%</span></div>
+              <div class="momentum-copy">
+                <strong>{% if completion_rate == 100 and total > 0 %}Look at you go!{% elif completion_rate >= 60 %}You're finding your flow.{% elif completed > 0 %}Small wins add up.{% else %}Start anywhere.{% endif %}</strong>
+                <p>{% if total == 0 %}Add one task to get started.{% else %}{{ completed }} of {{ total }} tasks checked off. Keep it kind and realistic.{% endif %}</p>
+              </div>
+            </div>
             <div class="momentum-bar"><span style="width: {{ completion_rate }}%"></span></div>
             <div class="momentum-quote">“You can do hard things, one small step at a time.”</div>
           </section>
+
           <div class="gentle-note"><span>☼</span><p><strong>Remember to pause.</strong> A short break is part of a good plan, not a distraction from it.</p></div>
         </aside>
       </section>
@@ -194,21 +370,60 @@
 
 <div class="modal-backdrop" id="taskModal" hidden>
   <section class="task-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="modal-heading"><div><div class="section-eyebrow">MAKE IT HAPPEN</div><h2 id="modalTitle">Add a new task</h2><p>Keep it clear. You can figure out the rest as you go.</p></div><button class="modal-close" id="closeTaskModal" type="button" aria-label="Close dialog">×</button></div>
+    <div class="modal-heading">
+      <div>
+        <div class="section-eyebrow">MAKE IT HAPPEN</div>
+        <h2 id="modalTitle">Add a new task</h2>
+        <p>Keep it clear. You can figure out the rest as you go.</p>
+      </div>
+      <button class="modal-close" id="closeTaskModal" type="button" aria-label="Close dialog">×</button>
+    </div>
     <form method="post" action="{{ url_for('create_task') }}" id="newTaskForm">
       <label class="form-label" for="taskTitle">What needs doing? <span>*</span></label>
       <input class="form-control title-control" id="taskTitle" name="title" maxlength="120" placeholder="e.g. Review lecture notes" required>
       <div class="form-row">
-        <div class="form-field"><label class="form-label" for="taskCategory">Space</label><select class="form-control" id="taskCategory" name="category"><option>Study</option><option>Work</option><option>Personal</option><option>Health</option></select></div>
-        <div class="form-field"><label class="form-label" for="taskPriority">Priority</label><select class="form-control" id="taskPriority" name="priority"><option>High</option><option selected>Medium</option><option>Low</option></select></div>
+        <div class="form-field">
+          <label class="form-label" for="taskCategory">Space</label>
+          <select class="form-control" id="taskCategory" name="category">
+            <option>Study</option>
+            <option>Work</option>
+            <option>Personal</option>
+            <option>Health</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="taskPriority">Priority</label>
+          <select class="form-control" id="taskPriority" name="priority">
+            <option>High</option>
+            <option selected>Medium</option>
+            <option>Low</option>
+          </select>
+        </div>
       </div>
       <div class="form-row">
-        <div class="form-field"><label class="form-label" for="taskDue">Deadline <span class="optional">OPTIONAL</span></label><input class="form-control" id="taskDue" name="due_date" type="date" min="{{ today }}"></div>
-        <div class="form-field"><label class="form-label" for="taskEstimate">Estimated time</label><select class="form-control" id="taskEstimate" name="estimate"><option value="15">15 minutes</option><option value="30" selected>30 minutes</option><option value="45">45 minutes</option><option value="60">1 hour</option><option value="90">1.5 hours</option><option value="120">2 hours</option><option value="180">3 hours</option></select></div>
+        <div class="form-field">
+          <label class="form-label" for="taskDue">Deadline <span class="optional">OPTIONAL</span></label>
+          <input class="form-control" id="taskDue" name="due_date" type="date" min="{{ today }}">
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="taskEstimate">Estimated time</label>
+          <select class="form-control" id="taskEstimate" name="estimate">
+            <option value="15">15 minutes</option>
+            <option value="30" selected>30 minutes</option>
+            <option value="45">45 minutes</option>
+            <option value="60">1 hour</option>
+            <option value="90">1.5 hours</option>
+            <option value="120">2 hours</option>
+            <option value="180">3 hours</option>
+          </select>
+        </div>
       </div>
       <label class="form-label" for="taskNotes">A note to future you <span class="optional">OPTIONAL</span></label>
       <textarea class="form-control notes-control" id="taskNotes" name="notes" rows="2" maxlength="300" placeholder="Anything that might make this easier..."></textarea>
-      <div class="modal-actions"><button class="cancel-button" type="button" id="cancelTaskModal">Maybe later</button><button class="primary-button" type="submit">Add to my list <span>↗</span></button></div>
+      <div class="modal-actions">
+        <button class="cancel-button" type="button" id="cancelTaskModal">Maybe later</button>
+        <button class="primary-button" type="submit">Add to my list <span>↗</span></button>
+      </div>
     </form>
   </section>
 </div>

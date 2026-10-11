@@ -55,6 +55,9 @@
     wireToast(el, action ? 9000 : 4500);
   }
   $$('.toast', toastStack || document).forEach(t => wireToast(t));
+  // Shared with the Deadline Guard and offline-sync blocks further down.
+  const PB = window.PB = window.PB || {};
+  PB.toast = toast;
 
   /* ------------------------------------------------------------------ *
    * Theme (light / dark) — initial value is set inline in <head>
@@ -113,6 +116,7 @@
     document.body.style.overflow = '';
     previousFocus?.focus?.();
   }
+  PB.isBusy = () => modalOpen() || isTyping(document.activeElement);
   ['openTaskModal', 'openTaskModal2', 'emptyAddTask'].forEach(id => document.getElementById(id)?.addEventListener('click', openModal));
   ['closeTaskModal', 'cancelTaskModal'].forEach(id => document.getElementById(id)?.addEventListener('click', closeModal));
   modal?.addEventListener('mousedown', e => { if (e.target === modal) closeModal(); });
@@ -234,7 +238,8 @@
   syncQuickTimes();
   rescueForm?.addEventListener('submit', e => {
     const value = Number(rescueInput?.value);
-    if (!Number.isFinite(value) || value < 15 || value > 720) {
+    // Whole minutes only: the server would otherwise have to guess what 90.5 means.
+    if (!Number.isInteger(value) || value < 15 || value > 720) {
       e.preventDefault();
       rescueError.hidden = false;
       rescueInput.closest('.time-input-wrap')?.classList.add('invalid');
@@ -270,9 +275,25 @@
     const baseTitle = document.title;
 
     const defaults = { mode: 'focus', durations: { focus: 25, short: 5, long: 15 }, running: false, endAt: null, remainingMs: 25 * 60000, cycle: 0, taskId: '', sound: true };
-    let state = Object.assign({}, defaults, store.get(KEY, {}));
-    state.durations = Object.assign({}, defaults.durations, state.durations);
-    if (!MODES[state.mode]) state.mode = 'focus';
+    // Rebuild state from storage, ignoring anything corrupted or out of range.
+    function loadState(raw) {
+      const s = Object.assign({}, defaults, raw && typeof raw === 'object' ? raw : {});
+      const durations = {};
+      Object.keys(MODES).forEach(mode => {
+        const v = Number(s.durations?.[mode]);
+        durations[mode] = Number.isFinite(v) ? Math.min(MODES[mode].max, Math.max(MODES[mode].min, Math.round(v))) : defaults.durations[mode];
+      });
+      s.durations = durations;
+      if (!MODES[s.mode]) s.mode = 'focus';
+      s.running = Boolean(s.running) && Number.isFinite(s.endAt);
+      if (!s.running) s.endAt = null;
+      if (!Number.isFinite(s.remainingMs) || s.remainingMs < 0) s.remainingMs = durations[s.mode] * 60000;
+      s.cycle = Math.min(4, Math.max(0, Math.floor(Number(s.cycle)) || 0));
+      s.taskId = s.taskId == null ? '' : String(s.taskId);
+      s.sound = s.sound !== false;
+      return s;
+    }
+    let state = loadState(store.get(KEY, {}));
 
     const fullMs = (mode = state.mode) => state.durations[mode] * 60000;
     const remaining = () => state.running ? Math.max(0, state.endAt - Date.now()) : state.remainingMs;
@@ -421,22 +442,37 @@
       if (state.mode === 'long') state.cycle = 0;
       return 'focus';
     }
-    function logSession(minutes, taskId) {
+    function logSession(minutes, taskId, sessionKey) {
       focusMinutes += minutes;
       focusSessions += 1;
       fetch('/api/focus-sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ minutes, task_id: taskId || null }),
+        // session_key lets the server ignore a session another tab already logged.
+        body: JSON.stringify({ minutes, task_id: taskId || null, session_key: sessionKey }),
       }).then(r => r.ok ? r.json() : null).then(data => {
         if (data) { focusMinutes = data.minutes; focusSessions = data.sessions; render(); }
       }).catch(() => {});
     }
+    const DONE_KEY = 'pb-timer-done';
     function complete() {
+      // If another tab already finished this session, adopt its state instead of
+      // logging, chiming and notifying a second time.
+      const endAt = state.endAt;
+      const raw = store.get(KEY, null); // null when storage is blocked: just complete normally
+      const stored = raw && loadState(raw);
+      if (endAt && stored && (store.get(DONE_KEY) === endAt || !stored.running || stored.endAt !== endAt)) {
+        state = stored;
+        if (els.task) els.task.value = state.taskId;
+        ensureLoop(); render();
+        return;
+      }
+      if (endAt) store.set(DONE_KEY, endAt);
+
       const finished = state.mode;
       const taskId = state.taskId;
       const title = taskTitle();
-      if (finished === 'focus') logSession(state.durations.focus, taskId);
+      if (finished === 'focus') logSession(state.durations.focus, taskId, endAt ? `timer-${endAt}` : null);
       state.mode = nextMode(true);
       state.running = false; state.endAt = null; state.remainingMs = fullMs();
       save(); ensureLoop(); render();
@@ -446,7 +482,7 @@
       if (finished === 'focus') {
         const breakLabel = state.mode === 'long' ? 'a long break' : 'a short break';
         notify('Focus session complete ✳', `Nice work. Time for ${breakLabel}.`);
-        const row = taskId && $(`.task-row[data-task-id="${taskId}"]`);
+        const row = taskId && $(`.task-row[data-task-id="${CSS.escape(String(taskId))}"]`);
         const checkBtn = row && $('.check-form .task-check:not(.checked)', row);
         toast(`Session done${title ? ` on “${title}”` : ''}. Take ${breakLabel}.`, 'success',
           checkBtn ? { label: 'Mark task done', run: () => checkBtn.closest('form').requestSubmit() } : null);
@@ -496,7 +532,7 @@
     // Keep multiple open tabs in sync
     window.addEventListener('storage', e => {
       if (e.key !== KEY || !e.newValue) return;
-      try { state = Object.assign({}, defaults, JSON.parse(e.newValue)); } catch { return; }
+      try { state = loadState(JSON.parse(e.newValue)); } catch { return; }
       if (els.task) els.task.value = state.taskId;
       render(); ensureLoop();
     });
@@ -510,7 +546,11 @@
     const fromPlan = params.get('focus');
     if (fromPlan) {
       history.replaceState(null, '', location.pathname + location.hash);
-      if ($$('option', els.task).some(o => o.value === fromPlan)) {
+      const known = $$('option', els.task).some(o => o.value === fromPlan);
+      if (known && state.running && state.mode === 'focus' && state.taskId !== fromPlan) {
+        // Don't re-label a session that is already running for a different task.
+        toast(`A focus session is already running${taskTitle() ? ` on “${taskTitle()}”` : ''}. Finish or reset it to switch tasks.`, 'info');
+      } else if (known) {
         state.taskId = fromPlan;
         els.task.value = fromPlan;
         if (!state.running && state.mode !== 'focus') { state.mode = 'focus'; state.remainingMs = fullMs(); }
@@ -539,5 +579,379 @@
     else if (key === '/' && search) { e.preventDefault(); search.focus(); search.select(); }
     else if (key === 't') { toggleTheme(); }
     else if (e.key === ' ' && timer && !/^(BUTTON|A)$/.test(e.target.tagName)) { e.preventDefault(); timer.toggle(); }
+  });
+})();
+
+
+
+/* AFTERCODE: Deadline Guard dashboard integration */
+(() => {
+  'use strict';
+
+  const $id = id => document.getElementById(id);
+  const card = $id('deadlineGuard');
+  const badge = $id('guardBadge');
+  const clockMessage = $id('guardClockMessage');
+  const networkMessage = $id('guardNetworkMessage');
+  const jumpSelect = $id('guardJumpSeconds');
+  const simulateButton = $id('simulateClockJump');
+  const resetButton = $id('resetClockGuard');
+  const resultMessage = $id('guardSimulationResult');
+
+  // Do nothing on pages that don't contain the Deadline Guard panel.
+  if (!card || !badge || !clockMessage || !networkMessage || !jumpSelect || !simulateButton || !resultMessage) return;
+
+  const RESULT_KEY = 'pb-guard-result';
+  // What the server believed when it rendered this page (banner, overdue labels).
+  const renderedUnreliable = card.dataset.clockUnreliable === 'true';
+
+  // A server error page is HTML; never let response.json() throw "Unexpected token <".
+  const readJson = response => response.json().catch(() => null);
+
+  function setBadge(text, warning) {
+    badge.textContent = text;
+    badge.classList.toggle('guard-warning', Boolean(warning));
+  }
+
+  function showReset(visible) {
+    if (resetButton) resetButton.hidden = !visible;
+  }
+
+  // The dashboard's overdue labels are server-rendered, so when the guard's state
+  // flips, reload to bring them in line and show the result after the reload.
+  function syncPageWith(suspicious, message) {
+    if (Boolean(suspicious) === renderedUnreliable) {
+      resultMessage.textContent = message;
+      return;
+    }
+    try { sessionStorage.setItem(RESULT_KEY, message); } catch {}
+    if (window.PB?.isBusy?.()) {
+      resultMessage.textContent = `${message} Refresh the page to update deadline labels.`;
+      return;
+    }
+    location.reload();
+  }
+
+  function updateNetworkStatus() {
+    const online = navigator.onLine;
+    networkMessage.textContent = online
+      ? 'Browser reports an internet/network connection.'
+      : 'Offline — changes are saved on this device until you reconnect.';
+    networkMessage.dataset.online = String(online);
+  }
+
+  async function refreshClockStatus() {
+    if (!navigator.onLine) {
+      setBadge('Offline', true);
+      clockMessage.textContent = 'Clock status unavailable from the server while offline.';
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/deadline-guard', { cache: 'no-store' });
+      const data = await readJson(response);
+      if (!response.ok || !data) throw new Error('Clock status request failed.');
+
+      const jump = data.detected_jump_seconds;
+      clockMessage.textContent = jump != null
+        ? `${data.message} Jump of about ${Math.abs(jump)} seconds ${jump > 0 ? 'forward' : 'backward'}.`
+        : `${data.message} Measured drift: ${data.clock_skew_seconds} seconds.`;
+      setBadge(data.clock_suspicious ? 'Clock warning' : 'Clock stable', data.clock_suspicious);
+      showReset(data.clock_suspicious);
+    } catch {
+      setBadge('Unavailable', true);
+      clockMessage.textContent = "Couldn't verify clock status. Try again when the server is available.";
+    }
+  }
+
+  async function post(url, body) {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {}),
+    });
+    const data = await readJson(response);
+    if (!response.ok || !data) throw new Error(data?.error || `Server responded with ${response.status}.`);
+    return data;
+  }
+
+  async function runAction(button, pendingText, action) {
+    simulateButton.disabled = true;
+    if (resetButton) resetButton.disabled = true;
+    resultMessage.textContent = pendingText;
+    try {
+      await action();
+    } catch (error) {
+      resultMessage.textContent = `Could not complete that: ${error.message}`;
+    } finally {
+      simulateButton.disabled = false;
+      if (resetButton) resetButton.disabled = false;
+    }
+  }
+
+  simulateButton.addEventListener('click', () => runAction(simulateButton, 'Running simulation…', async () => {
+    const data = await post('/api/deadline-guard/simulate-jump', { jump_seconds: Number(jumpSelect.value) });
+    setBadge(data.clock_suspicious ? 'Simulation detected' : 'Clock stable', data.clock_suspicious);
+    showReset(data.clock_suspicious);
+    syncPageWith(data.clock_suspicious,
+      `${data.message} Simulated drift: ${data.simulated_jump_minutes} minutes. Your actual clock was not changed.`);
+  }));
+
+  resetButton?.addEventListener('click', () => runAction(resetButton, 'Clearing warning…', async () => {
+    const data = await post('/api/deadline-guard/reset');
+    setBadge('Clock stable', false);
+    showReset(false);
+    syncPageWith(data.clock_suspicious, 'Warning cleared. Overdue labels are back on.');
+  }));
+
+  window.addEventListener('online', () => { updateNetworkStatus(); refreshClockStatus(); });
+  window.addEventListener('offline', () => { updateNetworkStatus(); refreshClockStatus(); });
+
+  // Show the result of an action that triggered a reload.
+  try {
+    const saved = sessionStorage.getItem(RESULT_KEY);
+    if (saved) { resultMessage.textContent = saved; sessionStorage.removeItem(RESULT_KEY); }
+  } catch {}
+
+  showReset(renderedUnreliable);
+  updateNetworkStatus();
+  refreshClockStatus();
+})();
+
+
+/* AFTERCODE: Offline task creation and synchronization */
+(() => {
+  'use strict';
+
+  const form = document.getElementById('newTaskForm');
+  const titleInput = document.getElementById('taskTitle');
+  const pendingSection = document.getElementById('offlinePendingTasks');
+  const pendingList = document.getElementById('offlinePendingList');
+  const pendingCount = document.getElementById('offlinePendingCount');
+
+  if (!form) return;
+
+  const QUEUE_KEY = 'pb-offline-task-queue';
+  const RETRY_DELAYS_MS = [5000, 15000, 30000, 60000];
+  const toast = (...args) => window.PB?.toast?.(...args);
+
+  let syncing = false;
+  let retryTimer = null;
+  let retryAttempt = 0;
+
+  function readQueue() {
+    try {
+      const value = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
+      return Array.isArray(value) ? value.filter(t => t && typeof t.operation_id === 'string') : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveQueue(queue) {
+    try {
+      localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // Always re-read storage before writing, so a task added while a request was
+  // in flight (in this tab or another) is never overwritten by a stale copy.
+  function removeFromQueue(operationId) {
+    return saveQueue(readQueue().filter(item => item.operation_id !== operationId));
+  }
+
+  function makeOperationId() {
+    if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+  }
+
+  function readFormTask() {
+    const values = new FormData(form);
+    return {
+      operation_id: makeOperationId(),
+      title: String(values.get('title') || '').trim().slice(0, 120),
+      category: String(values.get('category') || 'Study'),
+      priority: String(values.get('priority') || 'Medium'),
+      due_date: String(values.get('due_date') || ''),
+      estimate: Number(values.get('estimate')) || 30,
+      notes: String(values.get('notes') || '').trim().slice(0, 300),
+    };
+  }
+
+  // Display tasks that are waiting to reach the server.
+  function renderQueue() {
+    if (!pendingSection || !pendingList || !pendingCount) return;
+
+    const queue = readQueue();
+    pendingList.replaceChildren();
+    pendingCount.textContent = String(queue.length);
+    pendingSection.hidden = queue.length === 0;
+
+    queue.forEach(task => {
+      const row = document.createElement('div');
+      row.className = 'offline-pending-row';
+
+      const title = document.createElement('strong');
+      title.textContent = task.title || 'Untitled task';
+
+      const details = document.createElement('p');
+      details.textContent = `${task.category || 'Study'} · ${task.priority || 'Medium'} priority · ${Number(task.estimate) || 30} min`;
+
+      const status = document.createElement('span');
+      status.className = 'offline-pending-status';
+      status.textContent = !navigator.onLine
+        ? 'Saved on this device'
+        : syncing ? 'Syncing…' : 'Waiting for the server — will retry automatically';
+
+      row.append(title, details, status);
+      pendingList.appendChild(row);
+    });
+  }
+
+  function scheduleRetry() {
+    clearTimeout(retryTimer);
+    if (!readQueue().length) return;
+    const delay = RETRY_DELAYS_MS[Math.min(retryAttempt, RETRY_DELAYS_MS.length - 1)];
+    retryAttempt += 1;
+    retryTimer = setTimeout(syncQueue, delay);
+  }
+
+  // Server-rendered rows need a reload to show synced tasks. Don't yank the page
+  // away while someone is typing; offer a refresh button instead.
+  function showSyncedTasks(count) {
+    if (window.PB?.isBusy?.()) {
+      toast(`${count} ${count === 1 ? 'task' : 'tasks'} synced.`, 'success', { label: 'Refresh', run: () => location.reload() });
+      return;
+    }
+    location.reload();
+  }
+
+  async function syncQueue() {
+    if (syncing) return; // the running loop re-reads the queue and will pick up new tasks
+    if (!navigator.onLine) { renderQueue(); return; }
+
+    syncing = true;
+    clearTimeout(retryTimer);
+    renderQueue();
+
+    let synced = 0;
+    let retryLater = false;
+    const attempted = new Set();
+
+    try {
+      for (;;) {
+        const task = readQueue().find(item => !attempted.has(item.operation_id));
+        if (!task) break;
+        attempted.add(task.operation_id);
+
+        let response;
+        try {
+          response = await fetch('/api/tasks/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(task),
+            cache: 'no-store',
+          });
+        } catch {
+          retryLater = true; // server unreachable even though the browser says online
+          break;
+        }
+
+        if (response.ok) {
+          removeFromQueue(task.operation_id);
+          synced += 1;
+          renderQueue();
+          continue;
+        }
+
+        const retryable = response.status >= 500 || response.status === 408 || response.status === 429;
+        if (retryable) {
+          retryLater = true;
+          break;
+        }
+
+        // 4xx: the server will never accept this task as-is. Drop it so it
+        // doesn't block every task queued behind it, and tell the user.
+        const data = await response.json().catch(() => null);
+        removeFromQueue(task.operation_id);
+        toast(`“${task.title || 'Untitled task'}” couldn't be saved: ${data?.error || 'the server rejected it'}.`, 'error');
+        renderQueue();
+      }
+    } finally {
+      syncing = false;
+      renderQueue();
+    }
+
+    if (retryLater) scheduleRetry();
+    else retryAttempt = 0;
+
+    if (synced) showSyncedTasks(synced);
+  }
+
+  titleInput?.addEventListener('input', () => titleInput.setCustomValidity(''));
+
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+
+    // `required` accepts a title of only spaces; catch it here with a visible message.
+    if (titleInput) titleInput.setCustomValidity(titleInput.value.trim() ? '' : 'Give your task a name first.');
+    if (!form.reportValidity()) return;
+
+    const task = readFormTask();
+    const queue = readQueue();
+    queue.push(task);
+
+    if (!saveQueue(queue)) {
+      if (navigator.onLine) {
+        form.submit(); // storage blocked: fall back to the plain form post
+      } else {
+        toast("You're offline and this browser blocks local storage, so the task can't be saved yet.", 'error');
+      }
+      return;
+    }
+
+    form.reset();
+    document.getElementById('closeTaskModal')?.click();
+    renderQueue();
+
+    if (navigator.onLine) {
+      retryAttempt = 0;
+      await syncQueue();
+    } else {
+      toast("Saved on this device. It will sync when you're back online.", 'info');
+    }
+  });
+
+  // Toggling or deleting needs the server; don't send the browser to an error page.
+  document.querySelectorAll('.check-form, .delete-form').forEach(f => f.addEventListener('submit', e => {
+    if (!navigator.onLine) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      toast("You're offline. Reconnect to update or remove tasks.", 'error');
+    }
+  }, { capture: true }));
+
+  window.addEventListener('online', () => { retryAttempt = 0; syncQueue(); });
+  window.addEventListener('offline', renderQueue);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && readQueue().length) syncQueue();
+  });
+  // Another tab changed the queue.
+  window.addEventListener('storage', e => { if (e.key === QUEUE_KEY) renderQueue(); });
+
+  // Restore pending tasks when the page opens or refreshes.
+  renderQueue();
+  syncQueue();
+})();
+
+
+/* Offline support: cache the dashboard so it still opens without a connection. */
+(() => {
+  if (!('serviceWorker' in navigator) || !window.isSecureContext) return;
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
   });
 })();
