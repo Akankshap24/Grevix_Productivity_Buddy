@@ -1,9 +1,11 @@
 import sqlite3
+import os
 from contextlib import contextmanager
 from datetime import date, datetime
 from pathlib import Path
 
-DB_PATH = Path(__file__).with_name('productivity_buddy.db')
+
+DB_PATH = Path(os.environ.get("DB_PATH", "/tmp/productivity_buddy.db"))
 
 CATEGORIES = ('Study', 'Work', 'Personal', 'Health')
 PRIORITIES = ('High', 'Medium', 'Low')
