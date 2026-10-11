@@ -221,14 +221,15 @@
   const quickTimes = $$('.quick-times button');
   function syncQuickTimes() { quickTimes.forEach(b => b.classList.toggle('selected', b.dataset.minutes === rescueInput?.value)); }
   quickTimes.forEach(btn => btn.addEventListener('click', () => {
+    if (!rescueInput) return;
     rescueInput.value = btn.dataset.minutes;
-    rescueError.hidden = true;
+    if (rescueError) rescueError.hidden = true;
     rescueInput.closest('.time-input-wrap')?.classList.remove('invalid');
     syncQuickTimes();
   }));
   rescueInput?.addEventListener('input', () => {
     syncQuickTimes();
-    rescueError.hidden = true;
+    if (rescueError) rescueError.hidden = true;
     rescueInput.closest('.time-input-wrap')?.classList.remove('invalid');
   });
   syncQuickTimes();
@@ -237,9 +238,9 @@
     // Whole minutes only: the server would otherwise have to guess what 90.5 means.
     if (!Number.isInteger(value) || value < 15 || value > 720) {
       e.preventDefault();
-      rescueError.hidden = false;
-      rescueInput.closest('.time-input-wrap')?.classList.add('invalid');
-      rescueInput.focus();
+      if (rescueError) rescueError.hidden = false;
+      rescueInput?.closest('.time-input-wrap')?.classList.add('invalid');
+      rescueInput?.focus();
     }
   });
 
@@ -302,7 +303,7 @@
     };
 
     // Drop a linked task that has since been completed or deleted
-    if (state.taskId && !$$('option', els.task).some(o => o.value === String(state.taskId))) state.taskId = '';
+    if (state.taskId && !$$('option', els.task || document.createElement('select')).some(o => o.value === String(state.taskId))) state.taskId = '';
     if (els.task) els.task.value = state.taskId;
 
     let focusMinutes = Number(focusCard.dataset.focusMinutes || 0);
@@ -540,7 +541,7 @@
     // ?focus=<taskId> (from the Rescue plan)
     const params = new URLSearchParams(location.search);
     const fromPlan = params.get('focus');
-    if (fromPlan) {
+    if (fromPlan && els.task) {
       history.replaceState(null, '', location.pathname + location.hash);
       const known = $$('option', els.task).some(o => o.value === fromPlan);
       if (known && state.running && state.mode === 'focus' && state.taskId !== fromPlan) {
@@ -628,23 +629,6 @@
     location.reload();
   }
 
-<<<<<<< HEAD
-  function updateNetworkStatus() {
-    const online = navigator.onLine;
-    networkMessage.textContent = online
-      ? 'Browser reports an internet/network connection.'
-      : 'Offline — changes are saved on this device until you reconnect.';
-    networkMessage.dataset.online = String(online);
-  }
-
-  async function refreshClockStatus() {
-    if (!navigator.onLine) {
-      setBadge('Offline', true);
-      clockMessage.textContent = 'Clock status unavailable from the server while offline.';
-      return;
-    }
-
-=======
   // The app's server usually runs on this same computer, so "no internet" does not
   // mean "no server". Report both, and always try the server.
   let serverReachable = null;
@@ -663,7 +647,6 @@
   }
 
   async function refreshClockStatus() {
->>>>>>> 7def60a (minor changes)
     try {
       const response = await fetch('/api/deadline-guard', { cache: 'no-store' });
       const data = await readJson(response);
@@ -675,13 +658,6 @@
         : `${data.message} Measured drift: ${data.clock_skew_seconds} seconds.`;
       setBadge(data.clock_suspicious ? 'Clock warning' : 'Clock stable', data.clock_suspicious);
       showReset(data.clock_suspicious);
-<<<<<<< HEAD
-    } catch {
-      setBadge('Unavailable', true);
-      clockMessage.textContent = "Couldn't verify clock status. Try again when the server is available.";
-    }
-  }
-=======
       serverReachable = true;
     } catch {
       serverReachable = false;
@@ -692,7 +668,6 @@
   }
   window.PB = window.PB || {};
   window.PB.refreshGuard = refreshClockStatus;
->>>>>>> 7def60a (minor changes)
 
   async function post(url, body) {
     const response = await fetch(url, {
@@ -762,18 +737,11 @@
   if (!form) return;
 
   const QUEUE_KEY = 'pb-offline-task-queue';
-<<<<<<< HEAD
-  const RETRY_DELAYS_MS = [5000, 15000, 30000, 60000];
-  const toast = (...args) => window.PB?.toast?.(...args);
-
-  let syncing = false;
-=======
   const RETRY_DELAYS_MS = [3000, 5000, 10000, 15000]; // local server: cheap to check often
   const toast = (...args) => window.PB?.toast?.(...args);
 
   let syncing = false;
   let serverDown = false; // set from real requests, not navigator.onLine
->>>>>>> 7def60a (minor changes)
   let retryTimer = null;
   let retryAttempt = 0;
 
@@ -840,15 +808,9 @@
 
       const status = document.createElement('span');
       status.className = 'offline-pending-status';
-<<<<<<< HEAD
-      status.textContent = !navigator.onLine
-        ? 'Saved on this device'
-        : syncing ? 'Syncing…' : 'Waiting for the server — will retry automatically';
-=======
       status.textContent = syncing
         ? 'Syncing…'
         : serverDown ? 'Saved on this device — will sync when the server is back' : 'Waiting to sync';
->>>>>>> 7def60a (minor changes)
 
       row.append(title, details, status);
       pendingList.appendChild(row);
@@ -873,22 +835,32 @@
     location.reload();
   }
 
-<<<<<<< HEAD
-  async function syncQueue() {
-    if (syncing) return; // the running loop re-reads the queue and will pick up new tasks
-    if (!navigator.onLine) { renderQueue(); return; }
-=======
   function setServerDown(down) {
     if (serverDown === down) return;
     serverDown = down;
     window.PB?.refreshGuard?.(); // keep the Deadline Guard's connection line in step
   }
 
+  // Quick reachability check for actions that need the server right now.
+  async function serverAnswers() {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+    try {
+      const response = await fetch('/health', { cache: 'no-store', signal: controller.signal });
+      setServerDown(!response.ok);
+      return response.ok;
+    } catch {
+      setServerDown(true);
+      return false;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   // navigator.onLine only says whether the computer has a network; the server is
   // usually on this same computer, so always try it and judge by the result.
   async function syncQueue() {
     if (syncing) return; // the running loop re-reads the queue and will pick up new tasks
->>>>>>> 7def60a (minor changes)
 
     syncing = true;
     clearTimeout(retryTimer);
@@ -913,17 +885,11 @@
             cache: 'no-store',
           });
         } catch {
-<<<<<<< HEAD
-          retryLater = true; // server unreachable even though the browser says online
-          break;
-        }
-=======
           retryLater = true; // server unreachable
           setServerDown(true);
           break;
         }
         setServerDown(false);
->>>>>>> 7def60a (minor changes)
 
         if (response.ok) {
           removeFromQueue(task.operation_id);
@@ -970,17 +936,10 @@
     queue.push(task);
 
     if (!saveQueue(queue)) {
-<<<<<<< HEAD
-      if (navigator.onLine) {
-        form.submit(); // storage blocked: fall back to the plain form post
-      } else {
-        toast("You're offline and this browser blocks local storage, so the task can't be saved yet.", 'error');
-=======
       if (await serverAnswers()) {
         form.submit(); // storage blocked: fall back to the plain form post
       } else {
         toast("The server can't be reached and this browser blocks local storage, so the task can't be saved yet.", 'error');
->>>>>>> 7def60a (minor changes)
       }
       return;
     }
@@ -989,51 +948,22 @@
     document.getElementById('closeTaskModal')?.click();
     renderQueue();
 
-<<<<<<< HEAD
-    if (navigator.onLine) {
-      retryAttempt = 0;
-      await syncQueue();
-    } else {
-      toast("Saved on this device. It will sync when you're back online.", 'info');
-    }
-  });
-
-  // Toggling or deleting needs the server; don't send the browser to an error page.
-  document.querySelectorAll('.check-form, .delete-form').forEach(f => f.addEventListener('submit', e => {
-    if (!navigator.onLine) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      toast("You're offline. Reconnect to update or remove tasks.", 'error');
-=======
     retryAttempt = 0;
     await syncQueue();
-    if (readQueue().some(item => item.operation_id === task.operation_id) && serverDown) {
-      toast("Saved on this device. It will sync automatically when the server is back.", 'info');
+    if (readQueue().some(item => item.operation_id === task.operation_id)) {
+      toast(serverDown
+        ? 'Saved on this device. It will sync automatically when the server is back.'
+        : 'Saved on this device. The server is busy, so it will retry shortly.', 'info');
     }
   });
-
-  async function serverAnswers() {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 4000);
-    try {
-      const response = await fetch('/health', { cache: 'no-store', signal: controller.signal });
-      setServerDown(!response.ok);
-      return response.ok;
-    } catch {
-      setServerDown(true);
-      return false;
-    } finally {
-      clearTimeout(timer);
-    }
-  }
 
   // Ticking or deleting needs the server. Check it answers first, so a stopped
   // server shows a message instead of replacing the page with a browser error.
   document.querySelectorAll('.check-form, .delete-form').forEach(f => f.addEventListener('submit', async e => {
     e.preventDefault();
     e.stopImmediatePropagation(); // this handler now owns the confirm + submit
-    if (f.dataset.confirm && !confirm(f.dataset.confirm)) return;
     if (f.dataset.busy) return;
+    if (f.dataset.confirm && !confirm(f.dataset.confirm)) return;
     f.dataset.busy = '1';
     try {
       if (await serverAnswers()) {
@@ -1045,15 +975,10 @@
       }
     } finally {
       delete f.dataset.busy;
->>>>>>> 7def60a (minor changes)
     }
   }, { capture: true }));
 
   window.addEventListener('online', () => { retryAttempt = 0; syncQueue(); });
-<<<<<<< HEAD
-  window.addEventListener('offline', renderQueue);
-=======
->>>>>>> 7def60a (minor changes)
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && readQueue().length) syncQueue();
   });
@@ -1069,13 +994,7 @@
 /* Offline support: cache the dashboard so it still opens without a connection. */
 (() => {
   if (!('serviceWorker' in navigator) || !window.isSecureContext) return;
-<<<<<<< HEAD
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
-  });
-=======
   // Register right away rather than on 'load': with no internet, the Google Fonts
   // request can hold up 'load' long enough that offline caching never starts.
   navigator.serviceWorker.register('/sw.js').catch(() => {});
->>>>>>> 7def60a (minor changes)
 })();
